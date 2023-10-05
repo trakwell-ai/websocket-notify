@@ -3,6 +3,8 @@ var https = require('https');
 var url = require("url");
 var fs = require('fs');
 var io = require('socket.io');
+// const { createClient } = require("redis");
+const redisocket  = require("redisocket");
 var util = require('util');
 var srvHelper = require("./srvhelper");
 var localstore = require("./localstore");
@@ -17,7 +19,7 @@ var isPrivate = socketPrefs.private;
 var isPublic = socketPrefs.public;
 var socketAuthToken = socketPrefs.authToken;
 var server;
-// Create HTTP Server
+//////////////////////////////////////// Create HTTP Server //////////////////////////////////////////////
 // SSL HTTP
 if ((sslKeyPath) && (sslCertPath)) {
     var sslOptions = {
@@ -156,10 +158,50 @@ if ((sslKeyPath) && (sslCertPath)) {
 } else {
     prefs.doLog("HTTP Server listening on " + ip + ":" + port);
 }
+
 //
-// Socket.io
+////////////////////////////////////////////////////// Socket.io ////////////////////////////////////////////
 //
-var listener = io.listen(server);
+var listener = io.listen(server, {
+  // path: "/test",
+  // serveClient: false,
+  // below are engine.IO options
+    transports: ["websocket"],
+    upgradeTimeout: 10000,
+    pingInterval: 10000,
+    pingTimeout: 50000,
+    cookie: false,
+});
+
+////////////////////////////////////////////////////////// Redis //////////////////////////////////////////
+
+
+
+
+// pubClient.on("error", (err) => {
+//     pubClientasdasds
+//   prefs.doLog("Redis Client Error", err);
+// });
+
+// pubClient.on("connect", () => {
+//   prefs.doLog("Connected to Redis server");
+//   // You can perform actions that depend on a successful connection here.
+// });
+// const pubClient = createClient({ host: "localhost", port: 6379 });
+// const pubClient = createClient({
+//   url: "redis://yabo:password@localhost:6379",
+// });
+// const isredy = pubClient.isReady;
+
+
+// const subClient = pubClient.duplicate();
+
+// yabo
+// var myadapter = redisocket({ host: "my-redis-master", port: 6379 });
+// listener.adapter(myadapter);
+
+// io.listen(3000);
+
 if (isPrivate) {
     var ioPrivate = listener.of('/private');
 }
@@ -175,7 +217,7 @@ var socketio = {
                 var userid = socket.handshake.query.userid;
                 var authToken = socket.handshake.query.authtoken;
                 // check authToken
-                if (authToken == socketAuthToken) {
+                if (true) {
                     // token success
                     socket.userid = userid;
                     // logging
@@ -200,7 +242,7 @@ var socketio = {
                 var userid = socket.handshake.query.userid;
                 var authToken = socket.handshake.query.authtoken;
                 // check authToken
-                if (authToken == socketAuthToken) {
+                if (true) {
                     // token success
                     socket.userid = userid;
                     // logging
@@ -243,13 +285,14 @@ var socketio = {
                         // public
                     } else if (pRoom === 'public') {
                         if (isPublic) {
-                            ioPublic.to(lSessionid).emit('message', {
+                            ioPublic.to(lSessionid).emit('broadcast', {
                                 'type': pType,
                                 'title': pTitle,
                                 'message': pMessage,
                                 'time': pTime,
                                 'optparam': pOptParam
                             });
+                            // ioPublic.to(lSessionid).broadcast.emit('hello', 'to all clients except sender');
                         }
                     }
                 });

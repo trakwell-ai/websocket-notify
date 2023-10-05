@@ -10,10 +10,12 @@
   "author": "Daniel Hochleitner",
   "license": "MIT",
   "dependencies": {
+    "redisocket": "^4.0.1",
     "alasql": "^0.2.7",
     "encoding": "^0.1.12",
     "fs": "0.0.2",
     "http": "0.0.0",
+    "redis": "^4.6.10",
     "socket.io": "^1.7.4",
     "url": "^0.11.0"
   }
