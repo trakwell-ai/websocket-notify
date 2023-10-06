@@ -70,6 +70,9 @@ if ((sslKeyPath) && (sslCertPath)) {
                     socketio.sendNotify(lUserId, lRoom, lType, lTitle, lMessage, lOptParam, lTime, function() {
                         res.end();
                     });
+                    ioPublic.adapter.clients(function (err, clients) {
+                      prefs.doLog(clients); // an array containing all connected socket ids
+                    });
                 }
                 // socket status
             } else if (path == '/status') {
@@ -285,14 +288,21 @@ var socketio = {
                         // public
                     } else if (pRoom === 'public') {
                         if (isPublic) {
-                            ioPublic.to(lSessionid).emit('broadcast', {
+                            ioPublic.to(lSessionid).emit('message', {
                                 'type': pType,
                                 'title': pTitle,
                                 'message': pMessage,
                                 'time': pTime,
                                 'optparam': pOptParam
                             });
+                            ioPublic.adapter.clients(
+                                function (err, clients) {
+                                prefs.doLog(clients); // an array containing all connected socket ids
+                                }
+                            );
+                            // ioPublic.
                             // ioPublic.to(lSessionid).broadcast.emit('hello', 'to all clients except sender');
+                            // io.socket.emit("chat message");
                         }
                     }
                 });

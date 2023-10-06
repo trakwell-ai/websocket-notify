@@ -29,7 +29,7 @@
 			upgrade: false
 		});
 		// socket message events
-		privateSocket.on('message', function (data) {
+		privateSocket.on('message', function(data) {
 			console.log('private-socket');
 			console.log('type', data.type);
 			console.log('title', data.title);
@@ -37,7 +37,7 @@
 			console.log('time', data.time);
 			console.log('optparam', data.optparam);
 		});
-		publicSocket.on('message', function (data) {
+		publicSocket.on('message', function(data) {
 			console.log('public-socket');
 			console.log('type', data.type);
 			console.log('title', data.title);
@@ -47,10 +47,10 @@
 		});
 		// socket disconnect events
 		// socket message events
-		privateSocket.on('disconnect', function () {
+		privateSocket.on('disconnect', function() {
 			console.log('private-socket disconnected');
 		});
-		publicSocket.on('disconnect', function () {
+		publicSocket.on('disconnect', function() {
 			console.log('public-socket disconnected');
 		});
 	</script>
