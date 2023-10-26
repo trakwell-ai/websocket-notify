@@ -3,7 +3,6 @@ var https = require('https');
 var url = require("url");
 var fs = require('fs');
 var io = require('socket.io');
-// const { createClient } = require("redis");
 const redisocket  = require("redisocket");
 var util = require('util');
 var srvHelper = require("./srvhelper");
@@ -69,9 +68,6 @@ if ((sslKeyPath) && (sslCertPath)) {
                     // call notify
                     socketio.sendNotify(lUserId, lRoom, lType, lTitle, lMessage, lOptParam, lTime, function() {
                         res.end();
-                    });
-                    ioPublic.adapter.clients(function (err, clients) {
-                      prefs.doLog(clients); // an array containing all connected socket ids
                     });
                 }
                 // socket status
@@ -161,56 +157,28 @@ if ((sslKeyPath) && (sslCertPath)) {
 } else {
     prefs.doLog("HTTP Server listening on " + ip + ":" + port);
 }
-
-//
 ////////////////////////////////////////////////////// Socket.io ////////////////////////////////////////////
-//
 var listener = io.listen(server, {
-  // path: "/test",
-  // serveClient: false,
-  // below are engine.IO options
     transports: ["websocket"],
     upgradeTimeout: 10000,
     pingInterval: 10000,
     pingTimeout: 50000,
     cookie: false,
 });
-
-////////////////////////////////////////////////////////// Redis //////////////////////////////////////////
-
-
-
-
-// pubClient.on("error", (err) => {
-//     pubClientasdasds
-//   prefs.doLog("Redis Client Error", err);
-// });
-
-// pubClient.on("connect", () => {
-//   prefs.doLog("Connected to Redis server");
-//   // You can perform actions that depend on a successful connection here.
-// });
-// const pubClient = createClient({ host: "localhost", port: 6379 });
-// const pubClient = createClient({
-//   url: "redis://yabo:password@localhost:6379",
-// });
-// const isredy = pubClient.isReady;
-
-
-// const subClient = pubClient.duplicate();
-
-// yabo
-// var myadapter = redisocket({ host: "my-redis-master", port: 6379 });
-// listener.adapter(myadapter);
-
-// io.listen(3000);
-
 if (isPrivate) {
     var ioPrivate = listener.of('/private');
 }
 if (isPublic) {
     var ioPublic = listener.of('/public');
 }
+////////////////////////////////////////////////////////// Redis //////////////////////////////////////////
+var redisAdapter = redisocket({
+    host: "my-redis-master",
+    port: 6379,
+    // key: "socket.io", //Default. Redis SUB channel is "socket.io#/<public/private>#"
+});
+listener.adapter(redisAdapter);
+////////////////////////////////////////////////////// Callbacks ////////////////////////////////////////////
 var socketio = {
     // CONNECT ALL SOCKETS
     connectSockets: function() {
@@ -220,7 +188,7 @@ var socketio = {
                 var userid = socket.handshake.query.userid;
                 var authToken = socket.handshake.query.authtoken;
                 // check authToken
-                if (true) {
+                if (authToken == socketAuthToken) {
                     // token success
                     socket.userid = userid;
                     // logging
@@ -245,7 +213,7 @@ var socketio = {
                 var userid = socket.handshake.query.userid;
                 var authToken = socket.handshake.query.authtoken;
                 // check authToken
-                if (true) {
+                if (authToken == socketAuthToken) {
                     // token success
                     socket.userid = userid;
                     // logging
@@ -270,41 +238,31 @@ var socketio = {
         // get user session
         localstore.getUserSession(pUserId, pRoom, function(dbres, err) {
             if (dbres) {
-                dbres.forEach(function(dbItem) {
+                if (pRoom === "private") {
+                    if (isPrivate) {
+                        ioPrivate.to(lSessionid).emit("message", {
+                        type: pType,
+                        title: pTitle,
+                        message: pMessage,
+                        time: pTime,
+                        optparam: pOptParam,
+                        });
+                    }
+                } else if (pRoom === "public") {
+                    if (isPublic) {
+                        ioPublic.emit("message", {
+                        type: pType,
+                        title: pTitle,
+                        message: pMessage,
+                        time: pTime,
+                        optparam: pOptParam,
+                        });
+                    }
+                }
+                dbres.forEach(function (dbItem) {
                     lSessionid = dbItem.session;
                     // logging
                     prefs.doLog(lSessionid);
-                    // private
-                    if (pRoom === 'private') {
-                        if (isPrivate) {
-                            ioPrivate.to(lSessionid).emit('message', {
-                                'type': pType,
-                                'title': pTitle,
-                                'message': pMessage,
-                                'time': pTime,
-                                'optparam': pOptParam
-                            });
-                        }
-                        // public
-                    } else if (pRoom === 'public') {
-                        if (isPublic) {
-                            ioPublic.to(lSessionid).emit('message', {
-                                'type': pType,
-                                'title': pTitle,
-                                'message': pMessage,
-                                'time': pTime,
-                                'optparam': pOptParam
-                            });
-                            ioPublic.adapter.clients(
-                                function (err, clients) {
-                                prefs.doLog(clients); // an array containing all connected socket ids
-                                }
-                            );
-                            // ioPublic.
-                            // ioPublic.to(lSessionid).broadcast.emit('hello', 'to all clients except sender');
-                            // io.socket.emit("chat message");
-                        }
-                    }
                 });
             }
             if (err) {
