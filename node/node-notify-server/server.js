@@ -70,6 +70,11 @@ if ((sslKeyPath) && (sslCertPath)) {
                         res.end();
                     });
                 }
+                ioPublic.adapter.clients(
+                    function (err, clients) {
+                        prefs.doLog(clients); // an array containing all connected socket ids
+                    }
+                );
                 // socket status
             } else if (path == '/status') {
                 res.writeHead(200, {
@@ -173,7 +178,7 @@ if (isPublic) {
 }
 ////////////////////////////////////////////////////////// Redis //////////////////////////////////////////
 var redisAdapter = redisocket({
-    host: "my-redis-master",
+    host: "localhost",
     port: 6379,
     // key: "socket.io", //Default. Redis SUB channel is "socket.io#/<public/private>#"
 });
@@ -238,31 +243,43 @@ var socketio = {
         // get user session
         localstore.getUserSession(pUserId, pRoom, function(dbres, err) {
             if (dbres) {
-                if (pRoom === "private") {
-                    if (isPrivate) {
-                        ioPrivate.to(lSessionid).emit("message", {
-                        type: pType,
-                        title: pTitle,
-                        message: pMessage,
-                        time: pTime,
-                        optparam: pOptParam,
-                        });
-                    }
-                } else if (pRoom === "public") {
-                    if (isPublic) {
-                        ioPublic.emit("message", {
-                        type: pType,
-                        title: pTitle,
-                        message: pMessage,
-                        time: pTime,
-                        optparam: pOptParam,
-                        });
-                    }
-                }
                 dbres.forEach(function (dbItem) {
                     lSessionid = dbItem.session;
                     // logging
                     prefs.doLog(lSessionid);
+                    ioPrivate.adapter.clients(
+                        function (err, clients) {
+                        prefs.doLog(clients); // an array containing all connected socket ids
+                    }
+                    );
+                                        // private
+                    if (pRoom === 'private') {
+                        if (isPrivate) {
+                            ioPrivate.to(lSessionid).emit('message', {
+                                'type': pType,
+                                'title': pTitle,
+                                'message': pMessage,
+                                'time': pTime,
+                                'optparam': pOptParam
+                            });
+                        }
+                        // public
+                    } else if (pRoom === 'public') {
+                        if (isPublic) {
+                            ioPublic.emit('message', {
+                                'type': pType,
+                                'title': pTitle,
+                                'message': pMessage,
+                                'time': pTime,
+                                'optparam': pOptParam
+                            });
+                            ioPublic.adapter.clients(
+                                function (err, clients) {
+                                prefs.doLog(clients); // an array containing all connected socket ids
+                                }
+                            );
+                        }
+                    }
                 });
             }
             if (err) {
