@@ -1,13 +1,13 @@
-var http = require("http");
+var http = require('http');
 var https = require('https');
-var url = require("url");
+var url = require('url');
 var fs = require('fs');
 var io = require('socket.io');
-const redisocket  = require("redisocket");
+const redisocket  = require('redisocket');
 var util = require('util');
-var srvHelper = require("./srvhelper");
-var localstore = require("./localstore");
-var prefs = require("./prefs");
+var srvHelper = require('./srvhelper');
+var localstore = require('./localstore');
+var prefs = require('./prefs');
 var serverPrefs = prefs.readPrefs('server');
 var socketPrefs = prefs.readPrefs('socket');
 var ip = serverPrefs.ip;
@@ -18,6 +18,7 @@ var isPrivate = socketPrefs.private;
 var isPublic = socketPrefs.public;
 var socketAuthToken = socketPrefs.authToken;
 var server;
+
 //////////////////////////////////////// Create HTTP Server //////////////////////////////////////////////
 // SSL HTTP
 if ((sslKeyPath) && (sslCertPath)) {
@@ -78,7 +79,7 @@ if ((sslKeyPath) && (sslCertPath)) {
                 // socket status
             } else if (path == '/status') {
                 res.writeHead(200, {
-                    "Content-Type": "text/plain"
+                    'Content-Type': 'text/plain'
                 });
                 socketio.getSocketInfo(function(returnText) {
                     lStatusText = returnText;
@@ -141,7 +142,7 @@ if ((sslKeyPath) && (sslCertPath)) {
                 // socket status
             } else if (path == '/status') {
                 res.writeHead(200, {
-                    "Content-Type": "text/plain"
+                    'Content-Type': 'text/plain'
                 });
                 socketio.getSocketInfo(function(returnText) {
                     lStatusText = returnText;
@@ -158,13 +159,13 @@ if ((sslKeyPath) && (sslCertPath)) {
 server.listen(port, ip);
 // Log started HTTP Server
 if ((sslKeyPath) && (sslCertPath)) {
-    prefs.doLog("HTTPS Server listening on " + ip + ":" + port);
+    prefs.doLog('HTTPS Server listening on ' + ip + ':' + port);
 } else {
-    prefs.doLog("HTTP Server listening on " + ip + ":" + port);
+    prefs.doLog('HTTP Server listening on ' + ip + ':' + port);
 }
 ////////////////////////////////////////////////////// Socket.io ////////////////////////////////////////////
 var listener = io.listen(server, {
-    transports: ["websocket"],
+    transports: ['websocket'],
     upgradeTimeout: 10000,
     pingInterval: 10000,
     pingTimeout: 50000,
@@ -178,9 +179,9 @@ if (isPublic) {
 }
 ////////////////////////////////////////////////////////// Redis //////////////////////////////////////////
 var redisAdapter = redisocket({
-    host: "localhost",
+    host: 'localhost',
     port: 6379,
-    // key: "socket.io", //Default. Redis SUB channel is "socket.io#/<public/private>#"
+    // key: 'socket.io', //Default. Redis SUB channel is 'socket.io#/<public/private>#'
 });
 listener.adapter(redisAdapter);
 ////////////////////////////////////////////////////// Callbacks ////////////////////////////////////////////
@@ -241,43 +242,31 @@ var socketio = {
     // SEND MESSAGE TO CLIENTS
     sendNotify: function(pUserId, pRoom, pType, pTitle, pMessage, pOptParam, pTime, callback) {
         // get user session
-        localstore.getUserSession(pUserId, pRoom, function(dbres, err) {
+        localstore.getUserSession(pUserId, pRoom, function (err, dbres) {
             if (dbres) {
                 dbres.forEach(function (dbItem) {
                     lSessionid = dbItem.session;
-                    // logging
-                    prefs.doLog(lSessionid);
-                    ioPrivate.adapter.clients(
-                        function (err, clients) {
-                        prefs.doLog(clients); // an array containing all connected socket ids
-                    }
-                    );
-                                        // private
+                    // private
                     if (pRoom === 'private') {
                         if (isPrivate) {
                             ioPrivate.to(lSessionid).emit('message', {
-                                'type': pType,
-                                'title': pTitle,
-                                'message': pMessage,
-                                'time': pTime,
-                                'optparam': pOptParam
+                                type: pType,
+                                title: pTitle,
+                                message: pMessage,
+                                time: pTime,
+                                optparam: pOptParam,
                             });
                         }
                         // public
                     } else if (pRoom === 'public') {
                         if (isPublic) {
                             ioPublic.emit('message', {
-                                'type': pType,
-                                'title': pTitle,
-                                'message': pMessage,
-                                'time': pTime,
-                                'optparam': pOptParam
+                                type: pType,
+                                title: pTitle,
+                                message: pMessage,
+                                time: pTime,
+                                optparam: pOptParam,
                             });
-                            ioPublic.adapter.clients(
-                                function (err, clients) {
-                                prefs.doLog(clients); // an array containing all connected socket ids
-                                }
-                            );
                         }
                     }
                 });
