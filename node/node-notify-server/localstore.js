@@ -143,20 +143,67 @@ module.exports = {
     },
 
     // Delete Sessions older than 2 hours
-    deleteOldSessions: function (callback) {
-        // This operation is complex as Redis does not support direct querying.
-        // An alternative method would be to use Redis' EXPIRE feature at the time of session creation.
-        // For this example, we'll just log that this operation is not directly supported.
-        prefs.doLog("Redis - Delete users not directly supported");
-        callback(new Error("Operation not supported"));
-    },
+    deleteOldSessions: function(callback) {
+        var lDate = new Date();
+        lDate = lDate.setHours(lDate.getHours() - 2);
+        var lDateFormat = module.exports.dateFormat(lDate);
 
-    // Get DB stats (Redis does not support direct querying like SQL, this function would have to be rethought)
-    getDbStats: function (callback) {
-        // This operation is not directly supported by Redis as it is by SQL databases.
-        prefs.doLog("Redis - Select DB stats not directly supported");
-        callback(new Error("Operation not supported"));
-    },
-};
+        client.keys("user:*", (err, key) => {
+            if (err) {
+                prefs.doLog("REDIS - Get key ERROR", err)
+                callback(err)
+                return
+            }
 
-// Additional setup or periodic tasks may be required to handle deletion of old sessions or gathering statistics.
+            const keyToDelete = key.filter(k => {
+                const sessionCreatedDate = k.split(":")[2]
+                return sessionCreatedDate < lDateFormat
+            })
+
+            if (keyToDelete.length > 0) {
+                client.del(keyToDelete, (delErr, res) => {
+                    if (delErr) {
+                        prefs.doLog("REDIS - delete Old session ERROR", delErr)
+                        callback(delErr)
+                    } else {
+                        prefs.doLog("REDIS - delete Old Session DONE")
+                        callback(res)
+                    }
+                })
+            } else {
+                prefs.doLog("REDIS - No Old SESSION TO Delete")
+                callback([])
+            }
+        })
+    },
+    // Get DB stats
+    getDbStats: function(callback) {
+        client.keys('users:*', (err, keys) => {
+            if (err) {
+                console.error('Redis - Get keys ERROR', err);
+                callback(err);
+                return;
+            }
+            const pipeline = client.pipeline();
+            keys.forEach((key) => {
+                pipeline.hget(key, 'room');
+            });
+
+            pipeline.exec((pipelineErr, results) => {
+                if (pipelineErr) {
+                    prefs.doLog('Redis - Pipeline execution ERROR', pipelineErr);
+                    callback(pipelineErr);
+                    return;
+                }
+                // Sir this object represents the count of occurrences for each unique 'room' value ok?
+                const stats = results.reduce((acc, [room]) => {
+                    acc[room] = (acc[room] || 0) + 1;
+                    return acc;
+                }, {});
+
+                prefs.doLog('Redis - Select DB stats DONE');
+
+                callback(stats);
+            });
+        });
+    }}
