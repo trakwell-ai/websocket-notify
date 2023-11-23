@@ -1,5 +1,8 @@
 const Redis = require("ioredis");
-const redis = new Redis(); // Default to 127.0.0.1:6379, you can pass your own config
+const redis = new Redis({
+    host: 'my-redis-master',
+    port: 6379,
+}); 
 const prefs = require("./prefs");
 
 module.exports = {
@@ -15,7 +18,6 @@ module.exports = {
         var hh = pad2(pDate.getHours());
         var mm = pad2(pDate.getMinutes());
         var ss = pad2(pDate.getSeconds());
-
         return yyyy + MM + dd + hh + mm + ss;
     },
     // format date to DD.MM.YYYY HH24:MI
@@ -29,7 +31,6 @@ module.exports = {
         var dd = pad2(pDate.getDate());
         var hh = pad2(pDate.getHours());
         var mm = pad2(pDate.getMinutes());
-
         return dd + "." + MM + "." + yyyy + " " + hh + ":" + mm;
     },
     // Save Client Session in Redis
@@ -39,10 +40,8 @@ module.exports = {
         const sessionKey = `session:${socketSessionId}`;
         const sessionListKey = `sessions:${userId.toUpperCase()}`; // Key for the list of sessions
         const now = Date.now();
-
         // Start a transaction
         const pipeline = redis.pipeline();
-
         // Add new session to the list of sessions for this user
         pipeline.rpush(
             sessionListKey,
@@ -52,18 +51,12 @@ module.exports = {
                 created: now,
             })
         );
-
-        // Store session data within a hash
         pipeline.hset(userKey, "room", socketRoom.toUpperCase());
         pipeline.hset(userKey, "session", socketSessionId);
         pipeline.hset(userKey, "created", now);
-
-        // Add to room set for easy retrieval
         pipeline.sadd(roomKey, userId.toUpperCase());
-
-        // Set a session key for easy session retrieval/deletion
-        pipeline.set(sessionKey, userId.toUpperCase());
-
+        // Set the session key with an expiration of 2 hours (7200 seconds)
+        pipeline.set(sessionKey, userId.toUpperCase(), "EX", 7200);
         // Execute the transaction
         pipeline.exec((err, results) => {
             if (err) {
@@ -74,14 +67,11 @@ module.exports = {
             callback(null, results);
         });
     },
-
-    // Get all User Sessions from Redis
     // Get all User Sessions from Redis
     getUserSession: function (userId, socketRoom, callback) {
         const userKey = `user:${userId.toUpperCase()}`;
         const roomKey = `room:${socketRoom.toUpperCase()}`;
         const sessionListKey = `sessions:${userId.toUpperCase()}`; // Key for the list of sessions
-
         if (
             userId.toUpperCase() === "ALL" &&
             socketRoom.toUpperCase() === "PUBLIC"
@@ -89,10 +79,10 @@ module.exports = {
             // Retrieve all sessions in the room
             redis.smembers(roomKey, (err, userIds) => {
                 if (err) {
-                    prefs.doLog("Redis - Select user sessions ERROR", err);
+                    prefs.doLog("ioredis - Select user sessions ERROR", err);
                     return callback(err);
                 }
-                // Fetch each user's sessions
+                // Fetch sessions for each user
                 const sessionPromises = userIds.map((id) => {
                     return new Promise((resolve, reject) => {
                         redis.lrange(
@@ -115,12 +105,12 @@ module.exports = {
                 });
                 Promise.all(sessionPromises)
                     .then((results) => {
-                        prefs.doLog("Redis - Select user sessions DONE");
+                        prefs.doLog("ioredis - Select user sessions DONE");
                         callback(null, results);
                     })
                     .catch((error) => {
                         prefs.doLog(
-                            "Redis - Select user sessions ERROR",
+                            "ioredis - Select user sessions ERROR",
                             error
                         );
                         callback(error);
@@ -130,80 +120,88 @@ module.exports = {
             // Get sessions for a specific user
             redis.lrange(sessionListKey, 0, -1, (err, sessions) => {
                 if (err) {
-                    prefs.doLog("Redis - Select user session ERROR", err);
+                    prefs.doLog("ioredis - Select user session ERROR", err);
                     return callback(err);
                 }
                 const parsedSessions = sessions.map((session) =>
                     JSON.parse(session)
                 );
-                prefs.doLog("Redis - Select user session DONE");
+                prefs.doLog("ioredis - Select user session DONE");
                 callback(null, parsedSessions);
             });
         }
     },
-
-    // Delete Sessions older than 2 hours
-    deleteOldSessions: function(callback) {
-        var lDate = new Date();
-        lDate = lDate.setHours(lDate.getHours() - 2);
-        var lDateFormat = module.exports.dateFormat(lDate);
-
-        client.keys("user:*", (err, key) => {
-            if (err) {
-                prefs.doLog("REDIS - Get key ERROR", err)
-                callback(err)
-                return
-            }
-
-            const keyToDelete = key.filter(k => {
-                const sessionCreatedDate = k.split(":")[2]
-                return sessionCreatedDate < lDateFormat
-            })
-
-            if (keyToDelete.length > 0) {
-                client.del(keyToDelete, (delErr, res) => {
-                    if (delErr) {
-                        prefs.doLog("REDIS - delete Old session ERROR", delErr)
-                        callback(delErr)
-                    } else {
-                        prefs.doLog("REDIS - delete Old Session DONE")
-                        callback(res)
+    deleteOldSessions: function (callback) {
+        const twoHoursAgo = Date.now() - 7200;
+        // Fetch all session list keys
+        redis
+            .keys("sessions:*")
+            .then((sessionListKeys) => {
+                // Process each session list
+                sessionListKeys.forEach(async (listKey) => {
+                    try {
+                        // Fetch all sessions for the user
+                        const sessions = await redis.lrange(listKey, 0, -1);
+                        // Filter and delete old sessions
+                        sessions.forEach(async (sessionJson, index) => {
+                            const session = JSON.parse(sessionJson);
+                            if (session.created < twoHoursAgo) {
+                                // Remove the old session from the list
+                                await redis.lrem(listKey, 0, sessionJson);
+                            }
+                        });
+                        prefs.doLog(
+                            "ioredis - Old Sessions Deleted for " + listKey
+                        );
+                    } catch (error) {
+                        prefs.doLog(
+                            "ioredis - Error processing session list",
+                            error
+                        );
+                        callback(error);
                     }
-                })
-            } else {
-                prefs.doLog("REDIS - No Old SESSION TO Delete")
-                callback([])
-            }
-        })
-    },
-    // Get DB stats
-    getDbStats: function(callback) {
-        client.keys('users:*', (err, keys) => {
-            if (err) {
-                console.error('Redis - Get keys ERROR', err);
+                });
+            })
+            .then(() => {
+                callback(null, "Old sessions deletion complete");
+            })
+            .catch((err) => {
+                prefs.doLog("ioredis - Error fetching session list keys", err);
                 callback(err);
-                return;
-            }
-            const pipeline = client.pipeline();
-            keys.forEach((key) => {
-                pipeline.hget(key, 'room');
             });
-
-            pipeline.exec((pipelineErr, results) => {
-                if (pipelineErr) {
-                    prefs.doLog('Redis - Pipeline execution ERROR', pipelineErr);
-                    callback(pipelineErr);
-                    return;
-                }
-                // Sir this object represents the count of occurrences for each unique 'room' value ok?
-                const stats = results.reduce((acc, [room]) => {
-                    acc[room] = (acc[room] || 0) + 1;
-                    return acc;
-                }, {});
-
-                prefs.doLog('Redis - Select DB stats DONE');
-
-                callback(stats);
-            });
-        });
-    }}
+    },
+    getDbStats: function (callback) {
+        // Fetch all room keys
+        redis
+            .keys("room:*")
+            .then((roomKeys) => {
+                const statsPromises = roomKeys.map((roomKey) => {
+                    return new Promise((resolve, reject) => {
+                        // Get the count of sessions/users in each room
+                        redis
+                            .scard(roomKey)
+                            .then((count) => {
+                                // Extract room name from the key
+                                const roomName = roomKey.split(":")[1];
+                                resolve({ room: roomName, counter: count });
+                            })
+                            .catch((err) => reject(err));
+                    });
+                });
+                // Resolve all promises
+                Promise.all(statsPromises)
+                    .then((results) => {
+                        callback(null, results);
+                    })
+                    .catch((err) => {
+                        callback(err, null);
+                    });
+            })
+    .then(results => {
+        callback(null, results); 
+    })
+    .catch(err => {
+        callback(err, []); 
+    });
+    },
+};

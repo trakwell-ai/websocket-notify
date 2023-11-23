@@ -36,24 +36,19 @@ if ((sslKeyPath) && (sslCertPath)) {
         var lOptParam;
         var lType;
         var lJsonString;
-        // parse URL and Path
         var parsedUrl = url.parse(req.url, true);
         var path = parsedUrl.pathname;
         var fullPath = parsedUrl.path;
-        // logging IP and path
         prefs.doLog('Remote IP:', req.connection.remoteAddress);
         prefs.doLog('Path:', path);
         prefs.doLog('Full Path:', fullPath);
         prefs.doLog('User Agent:', req.headers['user-agent']);
         // HTTP Basic Auth
         if (srvHelper.doBasicAuth(req, res)) {
-            // index html with overview of services
             if (path == '/' && fullPath.length == path.length) {
                 srvHelper.serveIndex(res);
-                // Test client
             } else if (path == '/testclient') {
                 srvHelper.serveClient(res);
-                // Path notifyuser get interface
             } else if (path == '/notifyuser') {
                 lItems = srvHelper.getNotifyInfo(req, res);
                 if (lItems) {
@@ -64,19 +59,11 @@ if ((sslKeyPath) && (sslCertPath)) {
                     lMessage = lItems.message;
                     lTime = lItems.time;
                     lOptParam = lItems.optparam;
-                    // logging
                     prefs.doLog(lUserId + ' ' + lRoom + ' ' + lType + ' ' + lTitle + ' ' + lMessage + ' ' + lOptParam + ' ' + lTime);
-                    // call notify
                     socketio.sendNotify(lUserId, lRoom, lType, lTitle, lMessage, lOptParam, lTime, function() {
                         res.end();
                     });
                 }
-                ioPublic.adapter.clients(
-                    function (err, clients) {
-                        prefs.doLog(clients); // an array containing all connected socket ids
-                    }
-                );
-                // socket status
             } else if (path == '/status') {
                 res.writeHead(200, {
                     'Content-Type': 'text/plain'
@@ -86,7 +73,6 @@ if ((sslKeyPath) && (sslCertPath)) {
                     res.write(lStatusText);
                     res.end();
                 });
-                // path not found
             } else {
                 srvHelper.throwHttpError(404, 'Not Found', res);
             }
@@ -104,11 +90,9 @@ if ((sslKeyPath) && (sslCertPath)) {
         var lTime;
         var lOptParam;
         var lStatusText;
-        // parse URL and Path
         var parsedUrl = url.parse(req.url, true);
         var path = parsedUrl.pathname;
         var fullPath = parsedUrl.path;
-        // logging IP and path
         prefs.doLog('Remote IP:', req.connection.remoteAddress);
         prefs.doLog('Path:', path);
         prefs.doLog('Full Path:', fullPath);
@@ -118,10 +102,8 @@ if ((sslKeyPath) && (sslCertPath)) {
             // index html with overview of services
             if (path == '/' && fullPath.length == path.length) {
                 srvHelper.serveIndex(res);
-                // Test client
             } else if (path == '/testclient') {
                 srvHelper.serveClient(res);
-                // Path notifyuser get interface
             } else if (path == '/notifyuser') {
                 lItems = srvHelper.getNotifyInfo(req, res);
                 if (lItems) {
@@ -132,14 +114,11 @@ if ((sslKeyPath) && (sslCertPath)) {
                     lMessage = lItems.message;
                     lTime = lItems.time;
                     lOptParam = lItems.optparam;
-                    // logging
                     prefs.doLog(lUserId + ' ' + lRoom + ' ' + lType + ' ' + lTitle + ' ' + lMessage + ' ' + lOptParam + ' ' + lTime);
-                    // call notify
                     socketio.sendNotify(lUserId, lRoom, lType, lTitle, lMessage, lOptParam, lTime, function() {
                         res.end();
                     });
                 }
-                // socket status
             } else if (path == '/status') {
                 res.writeHead(200, {
                     'Content-Type': 'text/plain'
@@ -149,7 +128,6 @@ if ((sslKeyPath) && (sslCertPath)) {
                     res.write(lStatusText);
                     res.end();
                 });
-                // path not found
             } else {
                 srvHelper.throwHttpError(404, 'Not Found', res);
             }
@@ -157,7 +135,6 @@ if ((sslKeyPath) && (sslCertPath)) {
     });
 }
 server.listen(port, ip);
-// Log started HTTP Server
 if ((sslKeyPath) && (sslCertPath)) {
     prefs.doLog('HTTPS Server listening on ' + ip + ':' + port);
 } else {
@@ -179,14 +156,13 @@ if (isPublic) {
 }
 ////////////////////////////////////////////////////////// Redis //////////////////////////////////////////
 var redisAdapter = redisocket({
-    host: 'localhost',
+    host: 'my-redis-master',
     port: 6379,
     // key: 'socket.io', //Default. Redis SUB channel is 'socket.io#/<public/private>#'
 });
 listener.adapter(redisAdapter);
 ////////////////////////////////////////////////////// Callbacks ////////////////////////////////////////////
 var socketio = {
-    // CONNECT ALL SOCKETS
     connectSockets: function() {
         // Private connect
         if (isPrivate) {
@@ -195,20 +171,15 @@ var socketio = {
                 var authToken = socket.handshake.query.authtoken;
                 // check authToken
                 if (authToken == socketAuthToken) {
-                    // token success
                     socket.userid = userid;
-                    // logging
                     prefs.doLog(userid + ' connected to Private');
                     // save session
                     localstore.saveUserSession(userid, 'private', socket.id, function() {
-                        // logging
                         prefs.doLog(userid + ' private session saved in DB');
                     });
                 } else {
                     // token error
-                    // logging
                     prefs.doLog(userid + ' with wrong authToken: ' + authToken);
-                    // disconnect
                     socket.disconnect();
                 }
             });
@@ -222,24 +193,19 @@ var socketio = {
                 if (authToken == socketAuthToken) {
                     // token success
                     socket.userid = userid;
-                    // logging
                     prefs.doLog(userid + ' connected to Public');
                     // save session
                     localstore.saveUserSession(userid, 'public', socket.id, function() {
-                        // logging
                         prefs.doLog(userid + ' public session saved in DB');
                     });
                 } else {
                     // token error
-                    // logging
                     prefs.doLog(userid + ' with wrong authToken: ' + authToken);
-                    // disconnect
                     socket.disconnect();
                 }
             });
         }
     },
-    // SEND MESSAGE TO CLIENTS
     sendNotify: function(pUserId, pRoom, pType, pTitle, pMessage, pOptParam, pTime, callback) {
         // get user session
         localstore.getUserSession(pUserId, pRoom, function (err, dbres) {
@@ -277,11 +243,9 @@ var socketio = {
         });
         callback();
     },
-    // GET SOCKET INFO
     getSocketInfo: function(callback) {
         var lReturnText;
         var lCount;
-        // socket counter
         lReturnText = 'CONNECTED CLIENTS COUNTER:' + '\n';
         // private
         if (isPrivate) {
@@ -296,18 +260,18 @@ var socketio = {
         // DB stats
         lReturnText = lReturnText + 'DATABASE STATS:' + '\n';
         // DB stats info
-        localstore.getDbStats(function(dbres, err) {
+        localstore.getDbStats(function (err, dbres) {
             if (dbres) {
                 dbres.forEach(function(dbItem) {
                     lReturnText = lReturnText + dbItem.room + ': ' + dbItem.counter + ' entries' + '\n';
                 });
             }
             if (err) {
-                prefs.doLog(pUserId, 'Error receiving DB stats: ' + err);
+                prefs.doLog(pUserId, "Error receiving DB stats: " + err);
+                return callback("Error"); 
             }
             callback(lReturnText);
         });
-        // logging
         prefs.doLog(lReturnText);
     }
 };
