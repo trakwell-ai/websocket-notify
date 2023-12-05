@@ -8,9 +8,7 @@ const prefs = require("./prefs");
 module.exports = {
     // format date to YYYYMMDDmmss
     dateFormat: function (pDate) {
-        function pad2(number) {
-            return (number < 10 ? "0" : "") + number;
-        }
+        const pad2 = (number) => number.toString().padStart(2, "0");
         pDate = new Date();
         var yyyy = pDate.getFullYear().toString();
         var MM = pad2(pDate.getMonth() + 1);
@@ -31,7 +29,7 @@ module.exports = {
         var dd = pad2(pDate.getDate());
         var hh = pad2(pDate.getHours());
         var mm = pad2(pDate.getMinutes());
-        return dd + "." + MM + "." + yyyy + " " + hh + ":" + mm;
+        return `${dd}.${MM}.${yyyy} ${hh}:${mm}`;
     },
     // Save Client Session in Redis
     saveUserSession: function (userId, socketRoom, socketSessionId, callback) {
@@ -68,67 +66,28 @@ module.exports = {
         });
     },
     // Get all User Sessions from Redis
-    getUserSession: function (userId, socketRoom, callback) {
-        const userKey = `user:${userId.toUpperCase()}`;
-        const roomKey = `room:${socketRoom.toUpperCase()}`;
-        const sessionListKey = `sessions:${userId.toUpperCase()}`; // Key for the list of sessions
-        if (
-            userId.toUpperCase() === "ALL" &&
-            socketRoom.toUpperCase() === "PUBLIC"
-        ) {
+    getUserSession: async function (userId, socketRoom) {
+        try {
+            const userKey = `user:${userId.toUpperCase()}`;
+            const roomKey = `room:${socketRoom.toUpperCase()}`;
+            const sessionListKey = `sessions:${userId.toUpperCase()}`; // Key for the list of sessions
+            if (userId.toUpperCase() === "ALL" && socketRoom.toUpperCase() === "PUBLIC") {
             // Retrieve all sessions in the room
-            redis.smembers(roomKey, (err, userIds) => {
-                if (err) {
-                    prefs.doLog("ioredis - Select user sessions ERROR", err);
-                    return callback(err);
-                }
-                // Fetch sessions for each user
-                const sessionPromises = userIds.map((id) => {
-                    return new Promise((resolve, reject) => {
-                        redis.lrange(
-                            `sessions:${id}`,
-                            0,
-                            -1,
-                            (error, sessions) => {
-                                if (error) {
-                                    reject(error);
-                                } else {
-                                    resolve(
-                                        sessions.map((session) =>
-                                            JSON.parse(session)
-                                        )
-                                    );
-                                }
-                            }
-                        );
-                    });
-                });
-                Promise.all(sessionPromises)
-                    .then((results) => {
-                        prefs.doLog("ioredis - Select user sessions DONE");
-                        callback(null, results);
-                    })
-                    .catch((error) => {
-                        prefs.doLog(
-                            "ioredis - Select user sessions ERROR",
-                            error
-                        );
-                        callback(error);
-                    });
-            });
-        } else {
+            const userIds = await redis.smembers(roomKey);
+            // Fetch sessions for each user
+            const sessions = await Promise.all(userIds.map(async id => {
+                const sessionData = await redis.lrange(`sessions:${id}`, 0, -1);
+                return sessionData.map(session => JSON.parse(session));
+            }));
+            return sessions;
+            } else {
             // Get sessions for a specific user
-            redis.lrange(sessionListKey, 0, -1, (err, sessions) => {
-                if (err) {
-                    prefs.doLog("ioredis - Select user session ERROR", err);
-                    return callback(err);
-                }
-                const parsedSessions = sessions.map((session) =>
-                    JSON.parse(session)
-                );
-                prefs.doLog("ioredis - Select user session DONE");
-                callback(null, parsedSessions);
-            });
+            const sessions = await redis.lrange(sessionListKey, 0, -1);
+            return sessions.map(session => JSON.parse(session));
+            }
+        } catch (err) {
+            console.error("Error in getUserSession:", err);
+            throw err; 
         }
     },
     deleteOldSessions: function (callback) {
