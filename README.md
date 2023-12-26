@@ -3,13 +3,16 @@
 [![APEX Community](https://cdn.rawgit.com/Dani3lSun/apex-github-badges/78c5adbe/badges/apex-community-badge.svg)](https://github.com/Dani3lSun/apex-github-badges) [![APEX Plugin](https://cdn.rawgit.com/Dani3lSun/apex-github-badges/b7e95341/badges/apex-plugin-badge.svg)](https://github.com/Dani3lSun/apex-github-badges)
 [![APEX Built with Love](https://cdn.rawgit.com/Dani3lSun/apex-github-badges/7919f913/badges/apex-love-badge.svg)](https://github.com/Dani3lSun/apex-github-badges)
 
-
 **Table of Contents**
 
 - [APEX Websocket Notification Bundle](#apex-websocket-notification-bundle)
+      - [Infrastructure Diagram](#infrastructure-diagram)
   - [Demo](#demo)
   - [Preview](#preview)
   - [Changelog](#changelog)
+    - [1.2.0 - Updated Javascript Libs (socket.io 1.7.4 \& Alertify 1.10.0) / Improved all bundled APEX plugins enhancements](#120---updated-javascript-libs-socketio-174--alertify-1100--improved-all-bundled-apex-plugins-enhancements)
+    - [1.1.0 - Updated Javascript Libs (socket.io 1.5.1 \& Alertify 1.8.0) / Send Websocket Notify Plugin enhancements](#110---updated-javascript-libs-socketio-151--alertify-180--send-websocket-notify-plugin-enhancements)
+    - [1.0.0 - Initial Release](#100---initial-release)
   - [Installation and Configuration](#installation-and-configuration)
     - [Installation Node.js Server](#installation-nodejs-server)
       - [Install Node.js](#install-nodejs)
@@ -18,7 +21,7 @@
     - [Installation Database](#installation-database)
       - [Database ACL](#database-acl)
       - [Oracle SSL Wallet](#oracle-ssl-wallet)
-      - [Compile the PL/SQL package](#compile-plsql-package)
+      - [Compile PL/SQL package](#compile-plsql-package)
     - [Installation APEX](#installation-apex)
       - [Install Plugins](#install-plugins)
   - [Usage](#usage)
@@ -33,6 +36,17 @@
       - [Show Websocket Notify](#show-websocket-notify)
   - [License](#license)
 
+This repo is a fork from <https://github.com/Dani3lSun/apex-websocket-notify-bundle>
+with the primary modification to manage the NodeJS `server.js` app using [pm2](https://pm2.keymetrics.io/docs/usage/quick-start/). The [ecosystem.config.js](./node/node-notify-server/ecosystem.config.js). So as to keep this document DRY (Don't Repeat Yourself) I will refer to the `pm2` docs to describe the configuration.
+
+The `host` field needs to be the resolvable name, or the public IP, of the node which will be serving up the websockets service.
+
+Additionally, we have configured the NodeJS server to reboot itself every few days due to some
+bug that appears to be a thread leak which causes the single-threaded app to consume 100% of a
+single core over a period of 4 - 6 days. We are setting the node to boot itself every three days
+in [PR#15](https://github.com/trakwell-ai/infra/pull/15).
+
+===============================================================================
 
 Purpose of this software bundle was to enable all APEX developers to use modern and state of the art web features like Node, Websockets and nice looking notifications in their applications.
 
@@ -49,13 +63,13 @@ This bundle includes all these features and simultaneously is designed to use al
 Developers don´t need to be experts in Javascript or JQuery and stuff like that (But as always, it´s not a bad skill!;) ). APEX & PL/SQL Know-How and a good knowledge of using Dynamic Actions should be enough to implement this notification bundle in your applications...
 
 #### Infrastructure Diagram
-![](https://github.com/Dani3lSun/apex-websocket-notify-bundle/blob/master/docs/infrastructure_diagram.png?raw=true)
 
+![](https://github.com/Dani3lSun/apex-websocket-notify-bundle/blob/master/docs/infrastructure_diagram.png?raw=true)
 
 ## Demo
 
 A demo application is available under
-https://apex.danielh.de/ords/f?p=WSNOTIFY
+<https://apex.danielh.de/ords/f?p=WSNOTIFY>
 
 And of course you find a APEX export (**demo_app.sql**) of it in [../apex/](https://github.com/Dani3lSun/apex-websocket-notify-bundle/tree/master/apex) folder. To use it just import the app and then go through the installation steps below.
 Under Shared Components --> Edit Application Definition --> Substitutions Strings, set
@@ -66,10 +80,9 @@ Under Shared Components --> Edit Application Definition --> Substitutions String
 
 The demo includes all plugins and shows the most common preferences and possibilities.
 
-
 ## Preview
-![](https://github.com/Dani3lSun/apex-websocket-notify-bundle/blob/master/docs/preview.gif?raw=true)
 
+![](https://github.com/Dani3lSun/apex-websocket-notify-bundle/blob/master/docs/preview.gif?raw=true)
 
 ## Changelog
 
@@ -79,7 +92,6 @@ The demo includes all plugins and shows the most common preferences and possibil
 
 #### [1.0.0 - Initial Release](https://github.com/Dani3lSun/apex-websocket-notify-bundle/releases/tag/v1.0.0)
 
-
 ## Installation and Configuration
 
 ### Installation Node.js Server
@@ -88,13 +100,16 @@ The demo includes all plugins and shows the most common preferences and possibil
 
 It is required to have a up and running Node.js installation on your server.
 Either install it using a package manager, or download the latest version from [Nodejs homepage](https://nodejs.org)...for example:
+
 - Ubuntu:
+
 ```
 apt-get install nodejs
 apt-get install npm
 ```
 
 - Mac OS X (Homebrew):
+
 ```
 brew install nodejs
 ```
@@ -108,14 +123,19 @@ npm is the package manager for Node applications. npm is used to install all req
 
 - Copy the complete folder [../node/node-notify-server](https://github.com/Dani3lSun/apex-websocket-notify-bundle/tree/master/node/node-notify-server) to your server
 - change to this directory via command line:
+
 ```
 cd /path/to/node-notify-server
 ```
+
 - Install all dependencies
+
 ```
 npm install
 ```
+
 - Start server
+
 ```
 npm start
 ```
@@ -156,9 +176,9 @@ You can change the default behavior of the server by editing the JSON config fil
 After changing one of these settings, please restart the Node Notification Server.
 
 SSL Support:
+
 - For test environments you can use the script [../node/node-notify-server/certs/create_cert.sh](https://github.com/Dani3lSun/apex-websocket-notify-bundle/blob/master/node/node-notify-server/certs/create_cert.sh) to create a self signed certificate
 - For production environments please get a officially signed certificate and place key.pem and cert.pem into the certs folder
-
 
 ### Installation Database
 
@@ -206,6 +226,7 @@ END;
 If you configured the Node Notification Server with SSL/HTTPS support, a Oracle SSL Wallet is needed by the database to communicate with the REST-Interface for sending notifications.
 
 To manually create a wallet, either use Oracle Wallet Manager or create the wallet with openssl utils like:
+
 - Grab the certificate from your server [node-notify-server/certs](https://github.com/Dani3lSun/apex-websocket-notify-bundle/tree/master/node/node-notify-server/certs)
 - Create the wallet on command line
 
@@ -218,7 +239,6 @@ openssl pkcs12 -export -in cert.pem -out ewallet.p12 -nokeys
   - **g_ssl_wallet_path:** Path of Oracle SSL wallet
   - **g_ssl_wallet_pwd:** Password of Oracle SSL wallet
 
-
 #### Compile PL/SQL package
 
 - Change the global variables in the [package specification](https://github.com/Dani3lSun/apex-websocket-notify-bundle/blob/master/plsql/ws_notify_api.pks) under "Websocket REST Call defaults" to reflect your environment
@@ -228,7 +248,6 @@ openssl pkcs12 -export -in cert.pem -out ewallet.p12 -nokeys
   - **g_ws_basic_auth_user:** HTTP Basic Auth username of Node Server (REST-Interface)
   - **g_ws_basic_auth_pwd:** HTTP Basic Auth password of Node Server (REST-Interface)
 - Connect to your database and compile the package spec and body (ws_notify_api.pks & ws_notify_api.pkb) from [../plsql](https://github.com/Dani3lSun/apex-websocket-notify-bundle/tree/master/plsql) folder
-
 
 ### Installation APEX
 
@@ -242,7 +261,6 @@ Just import these 3 files to your application and you are ready to go.
 - **Show Websocket Notify** - dynamic_action_plugin_de_danielh_showwsnotify.sql
 
 For a detailed description of the plugins, read further under **"Usage Section"** or import the demo app sql file to your workspace.
-
 
 ## Usage
 
@@ -259,16 +277,16 @@ Sending messages and notifications to users which are connected to the websocket
 Connecting and authenticating users against the node server and still more to receive live messages on client browser from server part.
 There exists 2 rooms/namespaces which users can subscribe to:
 
-  - **private** - For single user messages to all instances of one user (e.g. one user is logged in with 3 browsers)
-  - **public** - For single user messages to all instances of one user *AND* broadcasting messages to all connected clients
+- **private** - For single user messages to all instances of one user (e.g. one user is logged in with 3 browsers)
+- **public** - For single user messages to all instances of one user *AND* broadcasting messages to all connected clients
 
 - **Helper pages**
 
 Helper pages to get informations about services, status of server and a test client page to test some websocket interactions.
 
-  - **Overview Services:** http://[host-ip-of-server]:8080
-  - **Server Status Page:** http://[host-ip-of-server]:8080/status
-  - **Websocket Test Client:** http://[host-ip-of-server]:8080/testclient
+- **Overview Services:** http://[host-ip-of-server]:8080
+- **Server Status Page:** http://[host-ip-of-server]:8080/status
+- **Websocket Test Client:** http://[host-ip-of-server]:8080/testclient
 
 General settings of the node server like IP, port, authentication, SSL support and active websocket rooms can be configured with [../node/node-notify-server/prefs.json](https://github.com/Dani3lSun/apex-websocket-notify-bundle/blob/master/node/node-notify-server/prefs.json) file as mentioned above.
 
@@ -313,7 +331,6 @@ The PL/SQL API consists of one package **ws_notify_api** and includes many proce
 - **g_ssl_wallet_path** - If https, path to oracle wallet
 - **g_ssl_wallet_pwd** - If https, password of oracle wallet
 
-
 #### List of all procedures with all parameters
 
 **Procedure:** do_rest_notify_user
@@ -321,6 +338,7 @@ The PL/SQL API consists of one package **ws_notify_api** and includes many proce
 **Purpose:** Send Websocket Notifications over REST to connected users (General sending procedure with all parameters)
 
 **Parameter:**
+
 - **i_userid** (required)
 - **i_room** (required) - ("private" or "public")
 - **i_type** (required) - (info, success, warn, error)
@@ -335,6 +353,7 @@ The PL/SQL API consists of one package **ws_notify_api** and includes many proce
 **Purpose:** Send Websocket Notification to User / Room: Private / Type: Info
 
 **Parameter:**
+
 - **i_userid** (required)
 - **i_title** (required)
 - **i_message** (required)
@@ -347,6 +366,7 @@ The PL/SQL API consists of one package **ws_notify_api** and includes many proce
 **Purpose:** Send Websocket Notification to User / Room: Private / Type: Success
 
 **Parameter:**
+
 - **i_userid** (required)
 - **i_title** (required)
 - **i_message** (required)
@@ -359,6 +379,7 @@ The PL/SQL API consists of one package **ws_notify_api** and includes many proce
 **Purpose:** Send Websocket Notification to User / Room: Private / Type: Warn
 
 **Parameter:**
+
 - **i_userid** (required)
 - **i_title** (required)
 - **i_message** (required)
@@ -371,6 +392,7 @@ The PL/SQL API consists of one package **ws_notify_api** and includes many proce
 **Purpose:** Send Websocket Notification to User / Room: Private / Type: Error
 
 **Parameter:**
+
 - **i_userid** (required)
 - **i_title** (required)
 - **i_message** (required)
@@ -383,6 +405,7 @@ The PL/SQL API consists of one package **ws_notify_api** and includes many proce
 **Purpose:** Send Websocket Notification to User / Room: Public / Type: Info
 
 **Parameter:**
+
 - **i_userid** (required)
 - **i_title** (required)
 - **i_message** (required)
@@ -395,6 +418,7 @@ The PL/SQL API consists of one package **ws_notify_api** and includes many proce
 **Purpose:** Send Websocket Notification to User / Room: Public / Type: Success
 
 **Parameter:**
+
 - **i_userid** (required)
 - **i_title** (required)
 - **i_message** (required)
@@ -407,6 +431,7 @@ The PL/SQL API consists of one package **ws_notify_api** and includes many proce
 **Purpose:** Send Websocket Notification to User / Room: Public / Type: Warn
 
 **Parameter:**
+
 - **i_userid** (required)
 - **i_title** (required)
 - **i_message** (required)
@@ -419,6 +444,7 @@ The PL/SQL API consists of one package **ws_notify_api** and includes many proce
 **Purpose:** Send Websocket Notification to User / Room: Public / Type: Error
 
 **Parameter:**
+
 - **i_userid** (required)
 - **i_title** (required)
 - **i_message** (required)
@@ -431,6 +457,7 @@ The PL/SQL API consists of one package **ws_notify_api** and includes many proce
 **Purpose:** Send Websocket Notification to all Users / Room: Public / Type: Info
 
 **Parameter:**
+
 - **i_title** (required)
 - **i_message** (required)
 - **i_optparam** (optional) - (Optional Parameter String)
@@ -442,6 +469,7 @@ The PL/SQL API consists of one package **ws_notify_api** and includes many proce
 **Purpose:** Send Websocket Notification to all Users / Room: Public / Type: Success
 
 **Parameter:**
+
 - **i_title** (required)
 - **i_message** (required)
 - **i_optparam** (optional) - (Optional Parameter String)
@@ -453,6 +481,7 @@ The PL/SQL API consists of one package **ws_notify_api** and includes many proce
 **Purpose:** Send Websocket Notification to all Users / Room: Public / Type: Warn
 
 **Parameter:**
+
 - **i_title** (required)
 - **i_message** (required)
 - **i_optparam** (optional) - (Optional Parameter String)
@@ -464,6 +493,7 @@ The PL/SQL API consists of one package **ws_notify_api** and includes many proce
 **Purpose:** Send Websocket Notification to all Users / Room: Public / Type: Error
 
 **Parameter:**
+
 - **i_title** (required)
 - **i_message** (required)
 - **i_optparam** (optional) - (Optional Parameter String)
@@ -482,7 +512,6 @@ BEGIN
                                     i_optparam => 'myoptionalinfo123');
 END;
 ```
-
 
 ### APEX
 
@@ -570,7 +599,6 @@ All other parameters of an notification object (title, message, type (info, succ
 - **Plugin Events:**
   - **Private Notification clicked** - Clicked on a private notification object
   - **Public Notification clicked** - Clicked on a public notification object
-
 
 ## License
 
