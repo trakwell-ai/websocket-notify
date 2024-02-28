@@ -7,7 +7,7 @@
         "sslKeyPath": "",
         "sslCertPath": "",
         "logging": true,
-        "redisHost": "localhost",
+        "redisHost": "my-redis-master",
         "redisPort": 6379
     },
     "socket": {
