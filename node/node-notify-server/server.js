@@ -156,124 +156,152 @@ if (isPublic) {
 }
 ////////////////////////////////////////////////////////// Redis //////////////////////////////////////////
 var redisAdapter = redisocket({
-    host: 'my-redis-master',
-    port: 6379,
+    host: serverPrefs.redisHost,
+    port: serverPrefs.redisPort,
     // key: 'socket.io', //Default. Redis SUB channel is 'socket.io#/<public/private>#'
 });
 listener.adapter(redisAdapter);
 ////////////////////////////////////////////////////// Callbacks ////////////////////////////////////////////
 var socketio = {
-    connectSockets: function() {
+    connectSockets: function () {
         // Private connect
         if (isPrivate) {
-            ioPrivate.on('connection', function(socket) {
+            ioPrivate.on("connection", function (socket) {
                 var userid = socket.handshake.query.userid;
                 var authToken = socket.handshake.query.authtoken;
                 // check authToken
                 if (authToken == socketAuthToken) {
                     socket.userid = userid;
-                    prefs.doLog(userid + ' connected to Private');
+                    prefs.doLog(userid + " connected to Private");
                     // save session
-                    localstore.saveUserSession(userid, 'private', socket.id, function() {
-                        prefs.doLog(userid + ' private session saved in DB');
-                    });
+                    localstore.saveUserSession(
+                        userid,
+                        "private",
+                        socket.id,
+                        function () {
+                            prefs.doLog(
+                                userid + " private session saved in DB"
+                            );
+                        }
+                    );
                 } else {
                     // token error
-                    prefs.doLog(userid + ' with wrong authToken: ' + authToken);
+                    prefs.doLog(userid + " with wrong authToken: " + authToken);
                     socket.disconnect();
                 }
             });
         }
         // Public connect
         if (isPublic) {
-            ioPublic.on('connection', function(socket) {
+            ioPublic.on("connection", function (socket) {
                 var userid = socket.handshake.query.userid;
                 var authToken = socket.handshake.query.authtoken;
                 // check authToken
                 if (authToken == socketAuthToken) {
                     // token success
                     socket.userid = userid;
-                    prefs.doLog(userid + ' connected to Public');
+                    prefs.doLog(userid + " connected to Public");
                     // save session
-                    localstore.saveUserSession(userid, 'public', socket.id, function() {
-                        prefs.doLog(userid + ' public session saved in DB');
-                    });
+                    localstore.saveUserSession(
+                        userid,
+                        "public",
+                        socket.id,
+                        function () {
+                            prefs.doLog(userid + " public session saved in DB");
+                        }
+                    );
                 } else {
                     // token error
-                    prefs.doLog(userid + ' with wrong authToken: ' + authToken);
+                    prefs.doLog(userid + " with wrong authToken: " + authToken);
                     socket.disconnect();
                 }
             });
         }
     },
-    sendNotify: function(pUserId, pRoom, pType, pTitle, pMessage, pOptParam, pTime, callback) {
-        // get user session
-        localstore.getUserSession(pUserId, pRoom, function (err, dbres) {
+    sendNotify: function (
+        pUserId,
+        pRoom,
+        pType,
+        pTitle,
+        pMessage,
+        pOptParam,
+        pTime,
+        callback
+    ) {
+        if (pRoom === "private" && isPrivate) {    
+            try {
+                (async function () {
+            const dbres = await localstore.getUserSession(pUserId, pRoom);
+            console.log(dbres);
             if (dbres) {
                 dbres.forEach(function (dbItem) {
-                    lSessionid = dbItem.session;
-                    // private
-                    if (pRoom === 'private') {
-                        if (isPrivate) {
-                            ioPrivate.to(lSessionid).emit('message', {
-                                type: pType,
-                                title: pTitle,
-                                message: pMessage,
-                                time: pTime,
-                                optparam: pOptParam,
-                            });
-                        }
-                        // public
-                    } else if (pRoom === 'public') {
-                        if (isPublic) {
-                            ioPublic.emit('message', {
-                                type: pType,
-                                title: pTitle,
-                                message: pMessage,
-                                time: pTime,
-                                optparam: pOptParam,
-                            });
-                        }
-                    }
+                    var lSessionid = dbItem.session;
+                    ioPrivate.to(lSessionid).emit("message", {
+                        type: pType,
+                        title: pTitle,
+                        message: pMessage,
+                        time: pTime,
+                        optparam: pOptParam,
+                    });
                 });
             }
-            if (err) {
-                prefs.doLog(pUserId, 'Error receiving User DB session: ' + err);
-            }
-        });
-        callback();
+        })();
+    } catch (err) {
+        prefs.doLog(pUserId, "Error receiving User DB session: " + err);
+    }
+    callback();
+        }
+        // For public messages, emit to the room without fetching individual sessions
+        else if (pRoom === "public" && isPublic) {
+            ioPublic.emit("message", {
+                type: pType,
+                title: pTitle,
+                message: pMessage,
+                time: pTime,
+                optparam: pOptParam,
+            });
+            callback();
+        }
     },
-    getSocketInfo: function(callback) {
+    getSocketInfo: function (callback) {
         var lReturnText;
         var lCount;
-        lReturnText = 'CONNECTED CLIENTS COUNTER:' + '\n';
+        lReturnText = "CONNECTED CLIENTS COUNTER:" + "\n";
         // private
         if (isPrivate) {
             lCount = Object.keys(ioPrivate.connected).length;
-            lReturnText = lReturnText + 'Connected to Private: ' + lCount + '\n';
+            lReturnText =
+                lReturnText + "Connected to Private: " + lCount + "\n";
         }
         // public
         if (isPublic) {
             lCount = Object.keys(ioPublic.connected).length;
-            lReturnText = lReturnText + 'Connected to Public: ' + lCount + '\n' + '\n';
+            lReturnText =
+                lReturnText + "Connected to Public: " + lCount + "\n" + "\n";
         }
         // DB stats
-        lReturnText = lReturnText + 'DATABASE STATS:' + '\n';
+        lReturnText = lReturnText + "DATABASE STATS:" + "\n";
         // DB stats info
         localstore.getDbStats(function (err, dbres) {
             if (dbres) {
-                dbres.forEach(function(dbItem) {
-                    lReturnText = lReturnText + dbItem.room + ': ' + dbItem.counter + ' entries' + '\n';
+                dbres.forEach(function (dbItem) {
+                    lReturnText =
+                        lReturnText +
+                        dbItem.room +
+                        ": " +
+                        dbItem.counter +
+                        " entries" +
+                        "\n";
                 });
             }
             if (err) {
                 prefs.doLog(pUserId, "Error receiving DB stats: " + err);
-                return callback("Error"); 
+                return callback("Error");
             }
             callback(lReturnText);
         });
         prefs.doLog(lReturnText);
-    }
+    },
 };
 // connect sockets
 socketio.connectSockets();

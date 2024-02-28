@@ -19,6 +19,8 @@ module.exports = {
             var sslKeyPath = jsonObject.server.sslKeyPath;
             var sslCertPath = jsonObject.server.sslCertPath;
             var logging = jsonObject.server.logging;
+            var redisHost = jsonObject.server.redisHost;
+            var redisPort = jsonObject.server.redisPort;
             return {
                 ip: ip,
                 port: port,
@@ -26,16 +28,20 @@ module.exports = {
                 authPwd: authPwd,
                 sslKeyPath: sslKeyPath,
                 sslCertPath: sslCertPath,
-                logging: logging
+                logging: logging,
+                redisHost: redisHost,
+                redisPort: redisPort
             };
         } else if (pType == 'socket') {
             var lPrivate = jsonObject.socket.private;
             var lPublic = jsonObject.socket.public;
             var lAuthToken = jsonObject.socket.authToken;
+            var lTimeToLive = jsonObject.socket.timeToLive;
             return {
                 private: lPrivate,
                 public: lPublic,
-                authToken: lAuthToken
+                authToken: lAuthToken,
+                timeToLive: lTimeToLive
             };
         }
     },

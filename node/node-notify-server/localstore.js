@@ -1,9 +1,9 @@
 const Redis = require("ioredis");
-const redis = new Redis({
-    host: 'my-redis-master',
-    port: 6379,
-}); 
 const prefs = require("./prefs");
+const redis = new Redis({
+    host: prefs.readPrefs("server").redisHost, 
+    port: prefs.readPrefs("server").redisPort, 
+}); 
 
 module.exports = {
     // format date to YYYYMMDDmmss
@@ -53,8 +53,8 @@ module.exports = {
         pipeline.hset(userKey, "session", socketSessionId);
         pipeline.hset(userKey, "created", now);
         pipeline.sadd(roomKey, userId.toUpperCase());
-        // Set the session key with an expiration of 2 hours (7200 seconds)
-        pipeline.set(sessionKey, userId.toUpperCase(), "EX", 7200);
+        // Set the session key with an expiration of 5 hours (prefs seconds)
+        pipeline.set(sessionKey, userId.toUpperCase(), "EX", prefs.readPrefs("socket").timeToLive);
         // Execute the transaction
         pipeline.exec((err, results) => {
             if (err) {
@@ -91,7 +91,7 @@ module.exports = {
         }
     },
     deleteOldSessions: function (callback) {
-        const twoHoursAgo = Date.now() - 7200;
+        const twoHoursAgo = Date.now() - prefs.readPrefs("socket").timeToLive; 
         // Fetch all session list keys
         redis
             .keys("sessions:*")
