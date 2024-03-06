@@ -53,8 +53,12 @@ module.exports = {
         pipeline.hset(userKey, "session", socketSessionId);
         pipeline.hset(userKey, "created", now);
         pipeline.sadd(roomKey, userId.toUpperCase());
-        // Set the session key with an expiration of 5 hours (prefs seconds)
-        pipeline.set(sessionKey, userId.toUpperCase(), "EX", prefs.readPrefs("socket").timeToLive);
+        pipeline.set(
+            sessionKey,
+            userId.toUpperCase(),
+            "EX",
+            prefs.readPrefs("socket").timeToLive
+        );
         // Execute the transaction
         pipeline.exec((err, results) => {
             if (err) {
@@ -71,62 +75,71 @@ module.exports = {
             const userKey = `user:${userId.toUpperCase()}`;
             const roomKey = `room:${socketRoom.toUpperCase()}`;
             const sessionListKey = `sessions:${userId.toUpperCase()}`; // Key for the list of sessions
-            if (userId.toUpperCase() === "ALL" && socketRoom.toUpperCase() === "PUBLIC") {
-            // Retrieve all sessions in the room
-            const userIds = await redis.smembers(roomKey);
-            // Fetch sessions for each user
-            const sessions = await Promise.all(userIds.map(async id => {
-                const sessionData = await redis.lrange(`sessions:${id}`, 0, -1);
-                return sessionData.map(session => JSON.parse(session));
-            }));
-            return sessions;
+            if (
+                userId.toUpperCase() === "ALL" &&
+                socketRoom.toUpperCase() === "PUBLIC"
+            ) {
+                // Retrieve all sessions in the room
+                const userIds = await redis.smembers(roomKey);
+                // Fetch sessions for each user
+                const sessions = await Promise.all(
+                    userIds.map(async (id) => {
+                        const sessionData = await redis.lrange(
+                            `sessions:${id}`,
+                            0,
+                            -1
+                        );
+                        return sessionData.map((session) =>
+                            JSON.parse(session)
+                        );
+                    })
+                );
+                return sessions;
             } else {
-            // Get sessions for a specific user
-            const sessions = await redis.lrange(sessionListKey, 0, -1);
-            return sessions.map(session => JSON.parse(session));
+                // Get sessions for a specific user
+                const sessions = await redis.lrange(sessionListKey, 0, -1);
+                return sessions.map((session) => JSON.parse(session));
             }
         } catch (err) {
             console.error("Error in getUserSession:", err);
-            throw err; 
+            throw err;
         }
     },
-    deleteOldSessions: function (callback) {
-        const twoHoursAgo = Date.now() - prefs.readPrefs("socket").timeToLive; 
+    deleteOldSessions: function () {
+        const ttlInMilliseconds = prefs.readPrefs("socket").timeToLive; 
+        const cutoffTime = Date.now() - ttlInMilliseconds; 
+
         // Fetch all session list keys
         redis
             .keys("sessions:*")
             .then((sessionListKeys) => {
-                // Process each session list
                 sessionListKeys.forEach(async (listKey) => {
                     try {
                         // Fetch all sessions for the user
                         const sessions = await redis.lrange(listKey, 0, -1);
+
                         // Filter and delete old sessions
                         sessions.forEach(async (sessionJson, index) => {
                             const session = JSON.parse(sessionJson);
-                            if (session.created < twoHoursAgo) {
+                            if (session.created < cutoffTime) {
                                 // Remove the old session from the list
                                 await redis.lrem(listKey, 0, sessionJson);
+                                prefs.doLog(
+                                    "ioredis - Old session deleted:",
+                                    sessionJson
+                                );
                             }
                         });
-                        prefs.doLog(
-                            "ioredis - Old Sessions Deleted for " + listKey
-                        );
                     } catch (error) {
                         prefs.doLog(
                             "ioredis - Error processing session list",
                             error
                         );
-                        callback(error);
                     }
                 });
             })
-            .then(() => {
-                callback(null, "Old sessions deletion complete");
-            })
             .catch((err) => {
                 prefs.doLog("ioredis - Error fetching session list keys", err);
-                callback(err);
             });
     },
     getDbStats: function (callback) {
@@ -156,11 +169,11 @@ module.exports = {
                         callback(err, null);
                     });
             })
-    .then(results => {
-        callback(null, results); 
-    })
-    .catch(err => {
-        callback(err, []); 
-    });
+            .then((results) => {
+                callback(null, results);
+            })
+            .catch((err) => {
+                callback(err, []);
+            });
     },
 };

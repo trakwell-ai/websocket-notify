@@ -155,19 +155,19 @@ module.exports = {
         });
     },
     //
-    // Delete user session older than 3 hours
+    // Delete user session older than X hours
     //
     deleteOldSessions: function() {
-        setInterval(function() {
-            localstore.deleteOldSessions(function(dbres, err) {
+        setInterval(function () {
+            localstore.deleteOldSessions(function (dbres, err) {
                 if (dbres) {
                     // logging
-                    prefs.doLog('Old Sessions deleted');
+                    prefs.doLog("Old Sessions deleted");
                 }
                 if (err) {
-                    prefs.doLog('Error deleting User DB sessions: ' + err);
+                    prefs.doLog("Error deleting User DB sessions: " + err);
                 }
             });
-        }, 3600000);
+        }, socketPrefs.timeToLive);
     }
 };

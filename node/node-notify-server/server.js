@@ -231,21 +231,21 @@ var socketio = {
         if (pRoom === "private" && isPrivate) {    
             try {
                 (async function () {
-            const dbres = await localstore.getUserSession(pUserId, pRoom);
-            console.log(dbres);
-            if (dbres) {
-                dbres.forEach(function (dbItem) {
-                    var lSessionid = dbItem.session;
-                    ioPrivate.to(lSessionid).emit("message", {
-                        type: pType,
-                        title: pTitle,
-                        message: pMessage,
-                        time: pTime,
-                        optparam: pOptParam,
-                    });
-                });
-            }
-        })();
+                    const dbres = await localstore.getUserSession(pUserId, pRoom);
+                    console.log(dbres);
+                    if (dbres) {
+                        dbres.forEach(function (dbItem) {
+                            var lSessionid = dbItem.session;
+                            ioPrivate.to(lSessionid).emit("message", {
+                                type: pType,
+                                title: pTitle,
+                                message: pMessage,
+                                time: pTime,
+                                optparam: pOptParam,
+                            });
+                        });
+                    }
+                })();
     } catch (err) {
         prefs.doLog(pUserId, "Error receiving User DB session: " + err);
     }
@@ -253,13 +253,29 @@ var socketio = {
         }
         // For public messages, emit to the room without fetching individual sessions
         else if (pRoom === "public" && isPublic) {
-            ioPublic.emit("message", {
-                type: pType,
-                title: pTitle,
-                message: pMessage,
-                time: pTime,
-                optparam: pOptParam,
-            });
+            try {
+                (async function () {
+                    const dbres = await localstore.getUserSession(
+                        pUserId,
+                        pRoom
+                    );
+                    console.log(dbres);
+                    if (dbres) {
+                        dbres.forEach(function (dbItem) {
+                            var lSessionid = dbItem.session;
+                            ioPublic.to(lSessionid).emit("message", {
+                                type: pType,
+                                title: pTitle,
+                                message: pMessage,
+                                time: pTime,
+                                optparam: pOptParam,
+                            });
+                        });
+                    }
+                })();
+            } catch (err) {
+                prefs.doLog(pUserId, "Error receiving User DB session: " + err);
+            }
             callback();
         }
     },
@@ -305,5 +321,5 @@ var socketio = {
 };
 // connect sockets
 socketio.connectSockets();
-// delete user session older than 3 hours
+// delete user session older than X hours
 srvHelper.deleteOldSessions();
