@@ -14,6 +14,6 @@
         "private": true,
         "public": true,
         "authToken":"please-change-me",
-        "timeToLive": 180000
+        "timeToLive": 86400000
     }
 }
