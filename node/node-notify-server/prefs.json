@@ -13,7 +13,7 @@
     "socket": {
         "private": true,
         "public": true,
-        "authToken":"please-change-me",
+        "authToken":"AAdzZGZzZGRzZmR6ZTpzZGZ12",
         "timeToLive": 86400000
     }
 }

@@ -259,7 +259,7 @@ var socketio = {
                         pUserId,
                         pRoom
                     );
-                    console.log(dbres);
+                    // console.log(dbres);
                     if (dbres) {
                         dbres.forEach(function (dbItem) {
                             var lSessionid = dbItem.session;
