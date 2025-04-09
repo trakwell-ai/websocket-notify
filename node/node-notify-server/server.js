@@ -1,15 +1,15 @@
-var http = require('http');
-var https = require('https');
-var url = require('url');
-var fs = require('fs');
-var io = require('socket.io');
-const redisocket  = require('redisocket');
-var util = require('util');
-var srvHelper = require('./srvhelper');
-var localstore = require('./localstore');
-var prefs = require('./prefs');
-var serverPrefs = prefs.readPrefs('server');
-var socketPrefs = prefs.readPrefs('socket');
+// server.js
+var http = require("http");
+var https = require("https");
+var url = require("url");
+var fs = require("fs");
+var io = require("socket.io");
+const redisocket = require("redisocket");
+var srvHelper = require("./srvhelper");
+var localstore = require("./localstore");
+var prefs = require("./prefs");
+var serverPrefs = prefs.readPrefs("server");
+var socketPrefs = prefs.readPrefs("socket");
 var ip = serverPrefs.ip;
 var port = serverPrefs.port;
 var sslKeyPath = serverPrefs.sslKeyPath;
@@ -20,13 +20,13 @@ var socketAuthToken = socketPrefs.authToken;
 var server;
 
 //////////////////////////////////////// Create HTTP Server //////////////////////////////////////////////
-// SSL HTTP
-if ((sslKeyPath) && (sslCertPath)) {
+// HTTPS
+if (sslKeyPath && sslCertPath) {
     var sslOptions = {
         key: fs.readFileSync(sslKeyPath),
-        cert: fs.readFileSync(sslCertPath)
+        cert: fs.readFileSync(sslCertPath),
     };
-    server = https.createServer(sslOptions, function(req, res) {
+    server = https.createServer(sslOptions, function (req, res) {
         var lItems;
         var lUserId;
         var lRoom;
@@ -39,17 +39,17 @@ if ((sslKeyPath) && (sslCertPath)) {
         var parsedUrl = url.parse(req.url, true);
         var path = parsedUrl.pathname;
         var fullPath = parsedUrl.path;
-        prefs.doLog('Remote IP:', req.connection.remoteAddress);
-        prefs.doLog('Path:', path);
-        prefs.doLog('Full Path:', fullPath);
-        prefs.doLog('User Agent:', req.headers['user-agent']);
+        prefs.doLog("Remote IP:", req.connection.remoteAddress);
+        prefs.doLog("Path:", path);
+        prefs.doLog("Full Path:", fullPath);
+        prefs.doLog("User Agent:", req.headers["user-agent"]);
         // HTTP Basic Auth
         if (srvHelper.doBasicAuth(req, res)) {
-            if (path == '/' && fullPath.length == path.length) {
+            if (path == "/" && fullPath.length == path.length) {
                 srvHelper.serveIndex(res);
-            } else if (path == '/testclient') {
+            } else if (path == "/testclient") {
                 srvHelper.serveClient(res);
-            } else if (path == '/notifyuser') {
+            } else if (path == "/notifyuser") {
                 lItems = srvHelper.getNotifyInfo(req, res);
                 if (lItems) {
                     lUserId = lItems.userid;
@@ -59,28 +59,52 @@ if ((sslKeyPath) && (sslCertPath)) {
                     lMessage = lItems.message;
                     lTime = lItems.time;
                     lOptParam = lItems.optparam;
-                    prefs.doLog(lUserId + ' ' + lRoom + ' ' + lType + ' ' + lTitle + ' ' + lMessage + ' ' + lOptParam + ' ' + lTime);
-                    socketio.sendNotify(lUserId, lRoom, lType, lTitle, lMessage, lOptParam, lTime, function() {
-                        res.end();
-                    });
+                    prefs.doLog(
+                        lUserId +
+                            " " +
+                            lRoom +
+                            " " +
+                            lType +
+                            " " +
+                            lTitle +
+                            " " +
+                            lMessage +
+                            " " +
+                            lOptParam +
+                            " " +
+                            lTime
+                    );
+                    socketio.sendNotify(
+                        lUserId,
+                        lRoom,
+                        lType,
+                        lTitle,
+                        lMessage,
+                        lOptParam,
+                        lTime,
+                        function () {
+                            res.end();
+                        }
+                    );
                 }
-            } else if (path == '/status') {
+            } else if (path == "/status") {
                 res.writeHead(200, {
-                    'Content-Type': 'text/plain'
+                    "Content-Type": "text/plain",
                 });
-                socketio.getSocketInfo(function(returnText) {
+                socketio.getSocketInfo(function (returnText) {
                     lStatusText = returnText;
                     res.write(lStatusText);
                     res.end();
                 });
             } else {
-                srvHelper.throwHttpError(404, 'Not Found', res);
+                srvHelper.throwHttpError(404, "Not Found", res);
             }
         }
     });
-    // Standard HTTP
-} else {
-    server = http.createServer(function(req, res) {
+}
+// HTTP
+else {
+    server = http.createServer(function (req, res) {
         var lItems;
         var lUserId;
         var lType;
@@ -93,18 +117,18 @@ if ((sslKeyPath) && (sslCertPath)) {
         var parsedUrl = url.parse(req.url, true);
         var path = parsedUrl.pathname;
         var fullPath = parsedUrl.path;
-        prefs.doLog('Remote IP:', req.connection.remoteAddress);
-        prefs.doLog('Path:', path);
-        prefs.doLog('Full Path:', fullPath);
-        prefs.doLog('User Agent:', req.headers['user-agent']);
+        prefs.doLog("Remote IP:", req.connection.remoteAddress);
+        prefs.doLog("Path:", path);
+        prefs.doLog("Full Path:", fullPath);
+        prefs.doLog("User Agent:", req.headers["user-agent"]);
         // HTTP Basic Auth
         if (srvHelper.doBasicAuth(req, res)) {
             // index html with overview of services
-            if (path == '/' && fullPath.length == path.length) {
+            if (path == "/" && fullPath.length == path.length) {
                 srvHelper.serveIndex(res);
-            } else if (path == '/testclient') {
+            } else if (path == "/testclient") {
                 srvHelper.serveClient(res);
-            } else if (path == '/notifyuser') {
+            } else if (path == "/notifyuser") {
                 lItems = srvHelper.getNotifyInfo(req, res);
                 if (lItems) {
                     lUserId = lItems.userid;
@@ -114,45 +138,78 @@ if ((sslKeyPath) && (sslCertPath)) {
                     lMessage = lItems.message;
                     lTime = lItems.time;
                     lOptParam = lItems.optparam;
-                    prefs.doLog(lUserId + ' ' + lRoom + ' ' + lType + ' ' + lTitle + ' ' + lMessage + ' ' + lOptParam + ' ' + lTime);
-                    socketio.sendNotify(lUserId, lRoom, lType, lTitle, lMessage, lOptParam, lTime, function() {
-                        res.end();
-                    });
+                    prefs.doLog(
+                        lUserId +
+                            " " +
+                            lRoom +
+                            " " +
+                            lType +
+                            " " +
+                            lTitle +
+                            " " +
+                            lMessage +
+                            " " +
+                            lOptParam +
+                            " " +
+                            lTime
+                    );
+                    socketio.sendNotify(
+                        lUserId,
+                        lRoom,
+                        lType,
+                        lTitle,
+                        lMessage,
+                        lOptParam,
+                        lTime,
+                        function () {
+                            res.end();
+                        }
+                    );
                 }
-            } else if (path == '/status') {
+            } else if (path == "/status") {
                 res.writeHead(200, {
-                    'Content-Type': 'text/plain'
+                    "Content-Type": "text/plain",
                 });
-                socketio.getSocketInfo(function(returnText) {
+                socketio.getSocketInfo(function (returnText) {
                     lStatusText = returnText;
                     res.write(lStatusText);
                     res.end();
                 });
             } else {
-                srvHelper.throwHttpError(404, 'Not Found', res);
+                srvHelper.throwHttpError(404, "Not Found", res);
             }
         }
     });
 }
+// initialize Redis TrackingSets
+localstore
+    .initializeTrackingSets()
+    .then(() => {
+        prefs.doLog("Redis tracking sets initialized");
+    })
+    .catch((err) => {
+        prefs.doLog("Error initializing Redis tracking:", err);
+    });
+
 server.listen(port, ip);
-if ((sslKeyPath) && (sslCertPath)) {
-    prefs.doLog('HTTPS Server listening on ' + ip + ':' + port);
+if (sslKeyPath && sslCertPath) {
+    prefs.doLog("HTTPS Server listening on " + ip + ":" + port);
 } else {
-    prefs.doLog('HTTP Server listening on ' + ip + ':' + port);
+    prefs.doLog("HTTP Server listening on " + ip + ":" + port);
 }
 ////////////////////////////////////////////////////// Socket.io ////////////////////////////////////////////
 var listener = io.listen(server, {
-    transports: ['websocket'],
+    transports: ["websocket"],
     upgradeTimeout: 10000,
     pingInterval: 10000,
     pingTimeout: 50000,
     cookie: false,
 });
 if (isPrivate) {
-    var ioPrivate = listener.of('/private');
+    var ioPrivate = listener.of("/private");
 }
 if (isPublic) {
-    var ioPublic = listener.of('/public');
+    var ioPublic = listener.of("/public");
 }
 ////////////////////////////////////////////////////////// Redis //////////////////////////////////////////
 var redisAdapter = redisocket({
@@ -184,6 +241,31 @@ var socketio = {
                             );
                         }
                     );
+                    // Disconnect handler
+                    socket.on("disconnect", function () {
+                        var userid = socket.userid;
+                        prefs.doLog(userid + " disconnected from Private");
+                        // Remove the session from Redis
+                        localstore.removeUserSession(
+                            userid,
+                            socket.id,
+                            function (err, result) {
+                                if (err) {
+                                    prefs.doLog(
+                                        "Error removing session for " +
+                                            userid +
+                                            ": " +
+                                            err
+                                    );
+                                } else if (result && result.removed) {
+                                    prefs.doLog(
+                                        userid +
+                                            " private session removed from DB"
+                                    );
+                                }
+                            }
+                        );
+                    });
                 } else {
                     // token error
                     prefs.doLog(userid + " with wrong authToken: " + authToken);
@@ -210,6 +292,31 @@ var socketio = {
                             prefs.doLog(userid + " public session saved in DB");
                         }
                     );
+                    // Disconnect handler
+                    socket.on("disconnect", function () {
+                        var userid = socket.userid;
+                        prefs.doLog(userid + " disconnected from Public");
+                        // Remove the session from Redis
+                        localstore.removeUserSession(
+                            userid,
+                            socket.id,
+                            function (err, result) {
+                                if (err) {
+                                    prefs.doLog(
+                                        "Error removing session for " +
+                                            userid +
+                                            ": " +
+                                            err
+                                    );
+                                } else if (result && result.removed) {
+                                    prefs.doLog(
+                                        userid +
+                                            " public session removed from DB"
+                                    );
+                                }
+                            }
+                        );
+                    });
                 } else {
                     // token error
                     prefs.doLog(userid + " with wrong authToken: " + authToken);
@@ -228,10 +335,13 @@ var socketio = {
         pTime,
         callback
     ) {
-        if (pRoom === "private" && isPrivate) {    
+        if (pRoom === "private" && isPrivate) {
             try {
                 (async function () {
-                    const dbres = await localstore.getUserSession(pUserId, pRoom);
+                    const dbres = await localstore.getUserSession(
+                        pUserId,
+                        pRoom
+                    );
                     console.log(dbres);
                     if (dbres) {
                         dbres.forEach(function (dbItem) {
@@ -246,10 +356,10 @@ var socketio = {
                         });
                     }
                 })();
-    } catch (err) {
-        prefs.doLog(pUserId, "Error receiving User DB session: " + err);
-    }
-    callback();
+            } catch (err) {
+                prefs.doLog(pUserId, "Error receiving User DB session: " + err);
+            }
+            callback();
         }
         // For public messages, emit to the room without fetching individual sessions
         else if (pRoom === "public" && isPublic) {
@@ -321,5 +431,3 @@ var socketio = {
 };
 // connect sockets
 socketio.connectSockets();
-// delete user session older than X hours
-srvHelper.deleteOldSessions();

@@ -1,7 +1,7 @@
 {
-  "name": "websocket-notify",
-  "version": "1.1.0",
-  "description": "Websocket nofification services with GET interface",
+  "name": "websocket-server",
+  "version": "0.1.1",
+  "description": "Distributed / Scalable / Memory Safe / Non blocking / WSS backend",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -11,6 +11,7 @@
   "author": "Yabdul Abdala",
   "license": "MIT",
   "dependencies": {
+    "dotenv": "^16.4.7",
     "encoding": "^0.1.12",
     "fs": "0.0.2",
     "http": "0.0.0",
