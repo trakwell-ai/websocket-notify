@@ -19,10 +19,14 @@
 		console.log(connectString);
 		// connect to sockets
 		var privateSocket = io.connect('/private', {
-			query: connectString
+			query: connectString,
+			transports: ['websocket'],
+			upgrade: false
 		});
 		var publicSocket = io.connect('/public', {
-			query: connectString
+			query: connectString,
+			transports: ['websocket'],
+			upgrade: false
 		});
 		// socket message events
 		privateSocket.on('message', function(data) {

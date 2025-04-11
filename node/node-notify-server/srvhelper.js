@@ -1,6 +1,4 @@
-//
-// Helper functions for server
-//
+// srvhelper.js
 var fs = require('fs');
 var url = require("url");
 var encoding = require("encoding");
@@ -10,7 +8,7 @@ var serverPrefs = prefs.readPrefs('server');
 var socketPrefs = prefs.readPrefs('socket');
 var isPrivate = socketPrefs.private;
 var isPublic = socketPrefs.public;
-//
+
 module.exports = {
     //
     // HTTP Error function
@@ -154,20 +152,4 @@ module.exports = {
             }
         });
     },
-    //
-    // Delete user session older than 3 hours
-    //
-    deleteOldSessions: function() {
-        setInterval(function() {
-            localstore.deleteOldSessions(function(dbres, err) {
-                if (dbres) {
-                    // logging
-                    prefs.doLog('Old Sessions deleted');
-                }
-                if (err) {
-                    prefs.doLog('Error deleting User DB sessions: ' + err);
-                }
-            });
-        }, 3600000);
-    }
 };
